@@ -229,10 +229,13 @@
     { id:'p1', name:'头疗', comm:10, weight:1 },
     { id:'p2', name:'肩颈', comm:10, weight:1 },
     { id:'p3', name:'面部', comm:10, weight:1 },
-    { id:'p4', name:'小项', comm:3,  weight:0.5 }
+    { id:'p4', name:'小项1元', comm:1, weight:0 },
+    { id:'p5', name:'小项3元', comm:3, weight:0.5 },
+    { id:'p6', name:'小项5元', comm:5, weight:0.5 }
   ];
 
   var state = load();
+  if(state.__migrated){ delete state.__migrated; save(); }
   var cur = todayStr();
   var sel = {};          // 选中的项目 id
   var lastUndo = null;
@@ -258,10 +261,29 @@
       var raw = localStorage.getItem(KEY);
       if(raw){
         var o = JSON.parse(raw);
-        if(o && o.days && o.projects) return o;
+        if(o && o.days && o.projects) return migrate(o);
       }
     }catch(e){}
     return { projects: DEFAULTS.slice(), settings:{ cardRate:0.10 }, days:{} };
+  }
+
+  // 老版本只有一个“小项（3元 / 0.5）”，拆成 1 元 / 3 元 / 5 元三档
+  function migrate(o){
+    var ps = o.projects || [];
+    for(var i=0;i<ps.length;i++){
+      if(ps[i].name === '小项' && Math.abs(ps[i].comm - 3) < 1e-9 && Math.abs(ps[i].weight - 0.5) < 1e-9){
+        var base = ps[i].id || 'p4';
+        ps.splice(i, 1,
+          { id: base+'a', name:'小项1元', comm:1, weight:0 },
+          { id: base+'b', name:'小项3元', comm:3, weight:0.5 },
+          { id: base+'c', name:'小项5元', comm:5, weight:0.5 }
+        );
+        o.projects = ps;
+        o.__migrated = true;
+        break;
+      }
+    }
+    return o;
   }
   function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){ toast('保存失败，存储可能满了'); } }
 
@@ -327,7 +349,8 @@
     var html = '';
     for(var i=0;i<state.projects.length;i++){
       var p = state.projects[i];
-      html += '<button class="pj '+(sel[p.id]?'on':'')+'" data-id="'+p.id+'">'+p.name+'<span class="w">'+p.comm+'元</span></button>';
+      var sup = p.name.indexOf('元') >= 0 ? '' : '<span class="w">'+p.comm+'元</span>';
+      html += '<button class="pj '+(sel[p.id]?'on':'')+'" data-id="'+p.id+'">'+p.name+sup+'</button>';
     }
     bar.innerHTML = html;
     renderSel();
