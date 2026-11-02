@@ -1,7 +1,7 @@
-﻿/* 头疗日记 · Service Worker
+/* 头疗日记 · Service Worker
    策略：页面走“网络优先”（保证更新），静态资源走“缓存优先”（保证离线可用）。
    发版时把 VERSION 改一下，旧缓存会被清掉。 */
-const VERSION = 'v1';
+const VERSION = 'v2';
 const CACHE = 'toudiao-' + VERSION;
 const CORE = [
   './',
@@ -15,7 +15,7 @@ const CORE = [
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE)
-      .then((c) => c.addAll(CORE))
+      .then((c) => Promise.all(CORE.map((u) => c.add(u).catch(() => null))))
       .then(() => self.skipWaiting())
   );
 });
